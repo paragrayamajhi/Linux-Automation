@@ -1,0 +1,112 @@
+Processing proxmox.horizon.local (192.168.200.51) [Proxmox Hypervisor] as root
+  Running update_upgrade...
+  - ✓ update_upgrade: passed
+  Overall: passed
+Processing eve.horizon.local (192.168.200.52) [Eve-NG network simulator] as root
+  - unreachable: 192.168.200.52:22
+Processing ubuntu.horizon.local (192.168.50.150) [DMZ VM for public services and docker] as paragr
+  Running update_upgrade...
+  - ✓ update_upgrade: passed
+  Overall: passed
+Processing pi.hole (192.168.0.233) [Raspberry pi DNS filter] as paragr
+  Running update_upgrade...
+  - ✓ update_upgrade: passed
+  Overall: passed
+Processing automation-hub.horizon.local (192.168.200.53) [Central hub for automations] as paragr
+  Running update_upgrade...
+  - ✓ update_upgrade: passed
+  Overall: passed
+Archived previous report to: /home/paragr/automation/linux-updater/reports_archive/task_report_2026-06-01_07-00-50.json
+
+Orchestrator run complete
+Passed: 4 / 5
+Failed: 1 / 5
+Report saved to: /home/paragr/automation/linux-updater/task_report.json
+
+Host-wise summary:
+
+proxmox.horizon.local:
+  update_upgrade: passed
+  Total tests: 1
+  Passed: 1
+  Failed: 0
+
+eve.horizon.local:
+  Reason: Host unreachable on SSH port 22
+  Total tests: 0
+  Passed: 0
+  Failed: 0
+
+ubuntu.horizon.local:
+  update_upgrade: passed
+  Total tests: 1
+  Passed: 1
+  Failed: 0
+
+pi.hole:
+  update_upgrade: passed
+  Total tests: 1
+  Passed: 1
+  Failed: 0
+
+automation-hub.horizon.local:
+  update_upgrade: passed
+  Total tests: 1
+  Passed: 1
+  Failed: 0
+Processing proxmox.horizon.local (192.168.200.51) [Proxmox Hypervisor] as root
+  Running update_upgrade...
+  - ✓ update_upgrade: passed
+  Overall: passed
+Processing eve.horizon.local (192.168.200.52) [Eve-NG network simulator] as root
+  - unreachable: 192.168.200.52:22
+Processing ubuntu.horizon.local (192.168.50.150) [DMZ VM for public services and docker] as paragr
+  Running update_upgrade...
+  - ✓ update_upgrade: passed
+  Overall: passed
+Processing pi.hole (192.168.0.233) [Raspberry pi DNS filter] as paragr
+  Running update_upgrade...
+  - ✓ update_upgrade: passed
+  Overall: passed
+Processing automation-hub.horizon.local (192.168.200.53) [Central hub for automations] as paragr
+  Running update_upgrade...
+  - ✓ update_upgrade: passed
+  Overall: passed
+Archived previous report to: /home/paragr/automation/linux-updater/reports_archive/task_report_2026-06-01_08-00-38.json
+
+Orchestrator run complete
+Passed: 4 / 5
+Failed: 1 / 5
+Report saved to: /home/paragr/automation/linux-updater/task_report.json
+
+Host-wise summary:
+
+proxmox.horizon.local:
+  update_upgrade: passed
+  Total tests: 1
+  Passed: 1
+  Failed: 0
+
+eve.horizon.local:
+  Reason: Host unreachable on SSH port 22
+  Total tests: 0
+  Passed: 0
+  Failed: 0
+
+ubuntu.horizon.local:
+  update_upgrade: passed
+  Total tests: 1
+  Passed: 1
+  Failed: 0
+
+pi.hole:
+  update_upgrade: passed
+  Total tests: 1
+  Passed: 1
+  Failed: 0
+
+automation-hub.horizon.local:
+  update_upgrade: passed
+  Total tests: 1
+  Passed: 1
+  Failed: 0
