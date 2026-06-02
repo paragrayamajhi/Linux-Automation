@@ -131,7 +131,7 @@ def is_reachable(host: str, port: int = 22, timeout: int = SSH_CONNECT_TIMEOUT) 
 
 
 def run_local(host: dict[str, Any], timeout: int) -> tuple[int, str, str]:
-    username = host.get("username", "root")
+    username = host.get("username", "automator")
     if username == "root":
         command = "export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get -y upgrade"
     else:
@@ -150,7 +150,7 @@ def run_local(host: dict[str, Any], timeout: int) -> tuple[int, str, str]:
 
 
 def run_remote(host: dict[str, Any], timeout: int) -> tuple[int, str, str]:
-    username = host.get("username", "root")
+    username = host.get("username", "automator")
     target = f"{username}@{host['ip']}"
 
     if username == "root":
@@ -182,7 +182,7 @@ def run_shell_command(command: str, timeout: int) -> tuple[int, str, str]:
 
 
 def run_remote_command(host: dict[str, Any], command: str, timeout: int) -> tuple[int, str, str]:
-    username = host.get("username", "root")
+    username = host.get("username", "automator")
     target = f"{username}@{host['ip']}"
     ssh_command = ["ssh", *SSH_BATCH_OPTIONS, target, command]
     result = subprocess.run(
@@ -286,7 +286,7 @@ def main() -> int:
     for host in hosts:
         name = host.get("name")
         ip = host.get("ip")
-        username = host.get("username", "root")
+        username = host.get("username", "automator")
         description = host.get("description", "")
 
         if not name or not ip:

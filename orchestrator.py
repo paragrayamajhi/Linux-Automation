@@ -30,7 +30,8 @@ DEFAULT_HOSTS_PATH = Path(__file__).with_name("hosts.json")
 DEFAULT_REPORT_PATH = Path(__file__).with_name("task_report.json")
 
 TASK_ALIASES = {
-    "system_update": "update_upgrade",
+    "system_update": "regular_maint",
+    "update_upgrade": "regular_maint",
     "system_health": "system_healthcheck",
     "healthcheck": "system_healthcheck",
     "docker_health": "docker_healthcheck",
@@ -149,7 +150,7 @@ def run_shell_command(command: str, timeout: int) -> tuple[int, str, str]:
 
 
 def run_remote_command(host: dict[str, Any], command: str, timeout: int) -> tuple[int, str, str]:
-    username = host.get("username", "root")
+    username = host.get("username", "automator")
     target = f"{username}@{host['ip']}"
     ssh_command = ["ssh", *SSH_BATCH_OPTIONS, target, command]
     result = subprocess.run(
@@ -217,8 +218,19 @@ def build_task_list(tasks_arg: str) -> list[str]:
     return task_names
 
 
+def format_host_selector(host: dict[str, Any]) -> str:
+    name = str(host.get("name", "")).lower()
+    if not name:
+        return "<unknown>"
+
+    short_name = name.split(".")[0]
+    if short_name == "automation-hub":
+        return "automation"
+    return short_name
+
+
 def format_available_hosts(hosts: list[dict[str, Any]]) -> str:
-    return ", ".join(str(host.get("name", "<unknown>")) for host in hosts)
+    return ", ".join(format_host_selector(host) for host in hosts)
 
 
 def format_available_tasks() -> str:
@@ -232,12 +244,12 @@ def prompt_for_missing_values(hosts: list[dict[str, Any]], current_hosts: str | 
     print("Available hosts:", format_available_hosts(hosts))
     print("Available tasks:", format_available_tasks())
     print()
-    print("Enter hosts as 'all' or comma-separated values like 'ubuntu.horizon.local,pi.hole'")
-    print("Enter tasks as comma-separated values like 'update_upgrade,docker_healthcheck,system_healthcheck'")
-    print("Use aliases: system_update, system_health, docker_health, or 'all' for every task")
+    print("Enter hosts as 'all' or comma-separated values like 'ubuntu,pi.hole' or short names like 'proxmox,ubuntu,eve,automation'")
+    print("Enter tasks as comma-separated values like 'regular_maint,docker_healthcheck,system_healthcheck'")
+    print("Use aliases: system_update, update_upgrade, system_health, docker_health, or 'all' for every task")
     print("Direct CLI examples:")
     print("  python3 orchestrator.py --hosts all --tasks all")
-    print("  python3 orchestrator.py --hosts ubuntu.horizon.local,pi.hole --tasks docker_health,system_health")
+    print("  python3 orchestrator.py --hosts ubuntu.horizon.local,pi.hole --tasks regular_maint,docker_healthcheck")
     print()
     if current_hosts is None:
         current_hosts = input("Hosts [all]: ").strip() or "all"
@@ -251,7 +263,11 @@ def host_matches_selector(host: dict[str, Any], selector: str) -> bool:
     name = str(host.get("name", "")).lower()
     ip = str(host.get("ip", "")).lower()
     short_name = name.split(".")[0] if name else ""
-    return selector_lower in {name, ip, short_name}
+    if selector_lower in {name, ip, short_name}:
+        return True
+    if short_name.startswith(selector_lower + "-"):
+        return True
+    return False
 
 
 def build_host_selection(hosts_arg: str, hosts: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -337,7 +353,7 @@ def main() -> int:
     for host in selected_hosts:
         name = host.get("name")
         ip = host.get("ip")
-        username = host.get("username", "root")
+        username = host.get("username", "automator")
         description = host.get("description", "")
 
         if not name or not ip:

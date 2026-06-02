@@ -3,29 +3,47 @@ from typing import Any, Callable
 TaskExecutor = Callable[[str, int], tuple[int, str, str]]
 
 
-def task_update_upgrade(host: dict[str, Any], execute: TaskExecutor, timeout: int) -> dict[str, Any]:
+def task_regular_maint(host: dict[str, Any], execute: TaskExecutor, timeout: int) -> dict[str, Any]:
     result: dict[str, Any] = {
-        "task": "update_upgrade",
+        "task": "regular_maint",
         "status": "passed",
         "stdout": "",
         "stderr": "",
     }
 
-    username = host.get("username", "root")
-    if username == "root":
-        command = "export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get -y upgrade"
+    username = host.get("username", "automator")
+
+    if username != "root":
+        check_cmd = "sudo -n true"
+        rc_check, _, stderr_check = execute(check_cmd, timeout)
+        if rc_check != 0:
+            return {
+                "task": "regular_maint",
+                "status": "failed",
+                "reason": "Passwordless sudo is required for regular maintenance tasks",
+                "stdout": "",
+                "stderr": stderr_check.strip() or "sudo authentication failed",
+                "return_code": rc_check,
+            }
+
+        command = (
+            "export DEBIAN_FRONTEND=noninteractive && "
+            "sudo -n apt-get update && sudo -n apt-get -y upgrade && sudo -n apt-get -y autoremove --purge && sudo -n apt-get -y autoclean && sudo -n apt-get clean && "
+            "sudo -n journalctl --vacuum-time=14d"
+        )
     else:
         command = (
             "export DEBIAN_FRONTEND=noninteractive && "
-            "sudo -n apt-get update && sudo -n apt-get -y upgrade"
+            "apt-get update && apt-get -y upgrade && apt-get -y autoremove --purge && apt-get -y autoclean && apt-get clean && "
+            "journalctl --vacuum-time=14d"
         )
-
+    
     rc, stdout, stderr = execute(command, timeout)
     result["stdout"] = stdout
     result["stderr"] = stderr
     if rc != 0:
         result["status"] = "failed"
-        result["reason"] = "Update and upgrade task failed"
+        result["reason"] = "Regular maintenance task failed"
         result["return_code"] = rc
 
     return result
@@ -170,7 +188,7 @@ def task_system_healthcheck(host: dict[str, Any], execute: TaskExecutor, timeout
 
 
 TASK_PLAYBOOK: dict[str, Callable[[dict[str, Any], TaskExecutor, int], dict[str, Any]]] = {
-    "update_upgrade": task_update_upgrade,
+    "regular_maint": task_regular_maint,
     "docker_healthcheck": task_docker_healthcheck,
     "system_healthcheck": task_system_healthcheck,
 }

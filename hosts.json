@@ -4,31 +4,31 @@
 			"name": "proxmox.horizon.local",
 			"ip": "192.168.200.51",
 			"description": "Proxmox Hypervisor",
-			"username": "root"
+			"username": "automator"
 		},
 		{
 			"name": "eve.horizon.local",
 			"ip": "192.168.200.52",
 			"description": "Eve-NG network simulator",
-			"username": "root"
+			"username": "automator"
 		},
 		{
 			"name": "ubuntu.horizon.local",
 			"ip": "192.168.50.150",
 			"description": "DMZ VM for public services and docker",
-			"username": "paragr"
+			"username": "automator"
 		},
 		{
 			"name": "pi.hole",
 			"ip": "192.168.0.233",
 			"description": "Raspberry pi DNS filter",
-			"username": "paragr"
+			"username": "automator"
 		},
 		{
 			"name": "automation-hub.horizon.local",
 			"ip": "192.168.200.53",
 			"description": "Central hub for automations",
-			"username": "paragr"
+			"username": "automator"
 		}
 	]
 }
