@@ -4,7 +4,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPORT_FILE="$SCRIPT_DIR/task_report.json"
 LOG_FILE="$SCRIPT_DIR/task_report.log"
 LOG_ARCHIVE_DIR="$SCRIPT_DIR/automation_logs"
-CMD="bash -lc 'set -euo pipefail; mkdir -p \"$LOG_ARCHIVE_DIR\"; ARCHIVE_LOG_FILE=\"$LOG_ARCHIVE_DIR/task_report_\$(date +\"%Y-%m-%d_%H-%M-%S\").log\"; { echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] Cron job started\"; cd \"$SCRIPT_DIR\" && python3 orchestrator.py --hosts all --tasks system_update --report-file \"$REPORT_FILE\"; echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] Cron job finished\"; } 2>&1 | tee \"$ARCHIVE_LOG_FILE\" > \"$LOG_FILE\"'"
+CMD="bash -lc 'set -euo pipefail; mkdir -p \"$LOG_ARCHIVE_DIR\"; ARCHIVE_LOG_FILE=\"$LOG_ARCHIVE_DIR/task_report_\$(date +\"%Y-%m-%d_%H-%M-%S\").log\"; { echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] Cron job started\"; cd \"$SCRIPT_DIR\" && python3 orchestrator.py --hosts all --tasks system_update --report-file \"$REPORT_FILE\"; echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] Cron job finished\"; } 2>&1 | tee \"\$ARCHIVE_LOG_FILE\" > \"$LOG_FILE\"'"
 
 usage() {
   cat <<'EOF'
