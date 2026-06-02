@@ -168,6 +168,8 @@ def run_playbook_task(host: dict[str, Any], task_name: str, local: bool, timeout
             "task": task_name,
             "status": "failed",
             "reason": "Unknown task",
+            "started_at": datetime.now().isoformat(),
+            "finished_at": datetime.now().isoformat(),
         }
 
     executor: Callable[[str, int], tuple[int, str, str]]
@@ -176,13 +178,21 @@ def run_playbook_task(host: dict[str, Any], task_name: str, local: bool, timeout
     else:
         executor = lambda command, timeout=timeout: run_remote_command(host, command, timeout)
 
+    started_at = datetime.now()
     try:
-        return task_fn(host, executor, timeout)
+        result = task_fn(host, executor, timeout)
+        finished_at = datetime.now()
+        result["started_at"] = started_at.isoformat()
+        result["finished_at"] = finished_at.isoformat()
+        return result
     except subprocess.TimeoutExpired:
+        finished_at = datetime.now()
         return {
             "task": task_name,
             "status": "failed",
             "reason": "Task timed out",
+            "started_at": started_at.isoformat(),
+            "finished_at": finished_at.isoformat(),
         }
 
 
@@ -268,7 +278,7 @@ def build_host_selection(hosts_arg: str, hosts: list[dict[str, Any]]) -> list[di
     return unique_hosts
 
 
-def build_report(results: list[dict[str, Any]]) -> dict[str, Any]:
+def build_report(results: list[dict[str, Any]], started_at: datetime, finished_at: datetime) -> dict[str, Any]:
     passed = sum(1 for item in results if item["status"] == "passed")
     failed = sum(1 for item in results if item["status"] != "passed")
     return {
@@ -276,6 +286,8 @@ def build_report(results: list[dict[str, Any]]) -> dict[str, Any]:
             "total_hosts": len(results),
             "passed": passed,
             "failed": failed,
+            "started_at": started_at.isoformat(),
+            "finished_at": finished_at.isoformat(),
         },
         "hosts": results,
     }
@@ -320,6 +332,7 @@ def main() -> int:
     local_addresses = collect_local_addresses()
     local_hostname = socket.gethostname()
     report_items: list[dict[str, Any]] = []
+    execution_started_at = datetime.now()
 
     for host in selected_hosts:
         name = host.get("name")
@@ -406,7 +419,8 @@ def main() -> int:
         print(f"  Overall: {host_status}")
         report_items.append(host_result)
 
-    report = build_report(report_items)
+    execution_finished_at = datetime.now()
+    report = build_report(report_items, execution_started_at, execution_finished_at)
     archive_report(args.report_file)
     with open(args.report_file, "w", encoding="utf-8") as report_handle:
         json.dump(report, report_handle, indent=2)

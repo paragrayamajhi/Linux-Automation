@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPORT_FILE="$SCRIPT_DIR/task_report.json"
 LOG_FILE="$SCRIPT_DIR/task_report.log"
-CMD="cd \"$SCRIPT_DIR\" && python3 orchestrator.py --hosts all --tasks system_update --report-file \"$REPORT_FILE\""
+CMD="{ echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] Cron job started\"; cd \"$SCRIPT_DIR\" && python3 orchestrator.py --hosts all --tasks system_update --report-file \"$REPORT_FILE\"; echo \"[\$(date '+%Y-%m-%d %H:%M:%S')] Cron job finished\"; } >> \"$LOG_FILE\" 2>&1"
 
 usage() {
   cat <<'EOF'
@@ -43,7 +43,7 @@ fi
 
 if [ "$MODE" = "remove" ]; then
   existing=$(crontab -l 2>/dev/null || true)
-  filtered=$(printf '%s\n' "$existing" | grep -vF "$CMD >> \"$LOG_FILE\" 2>&1")
+  filtered=$(printf '%s\n' "$existing" | grep -vF "$CMD")
   printf '%s\n' "$filtered" | crontab -
   echo "Removed system_update cron job."
   exit 0
@@ -73,7 +73,7 @@ else
   exit 1
 fi
 
-CRON_ENTRY="$CRON_SCHEDULE $CMD >> \"$LOG_FILE\" 2>&1"
+CRON_ENTRY="$CRON_SCHEDULE $CMD"
 existing=$(crontab -l 2>/dev/null || true)
 existing_entries=$(printf '%s\n' "$existing" | grep -F "$CMD" || true)
 

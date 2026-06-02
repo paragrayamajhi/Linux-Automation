@@ -1,0 +1,95 @@
+{
+  "summary": {
+    "total_hosts": 5,
+    "passed": 4,
+    "failed": 1,
+    "started_at": "2026-06-01T10:00:01.957587",
+    "finished_at": "2026-06-01T10:00:48.373309"
+  },
+  "hosts": [
+    {
+      "name": "proxmox.horizon.local",
+      "ip": "192.168.200.51",
+      "description": "Proxmox Hypervisor",
+      "username": "root",
+      "status": "passed",
+      "tasks": [
+        {
+          "task": "update_upgrade",
+          "status": "passed",
+          "stdout": "Hit:1 http://deb.debian.org/debian trixie InRelease\nGet:2 http://security.debian.org/debian-security trixie-security InRelease [43.4 kB]\nHit:3 http://deb.debian.org/debian trixie-updates InRelease\nHit:4 http://download.proxmox.com/debian/pve trixie InRelease\nFetched 43.4 kB in 1s (43.3 kB/s)\nReading package lists...\nReading package lists...\nBuilding dependency tree...\nReading state information...\nCalculating upgrade...\nThe following packages were automatically installed and are no longer required:\n  proxmox-kernel-6.17.13-11-pve-signed proxmox-kernel-7.0.2-3-pve-signed\nUse 'apt autoremove' to remove them.\n0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.\n",
+          "stderr": "Warning: Permanently added '192.168.200.51' (ED25519) to the list of known hosts.\n",
+          "started_at": "2026-06-01T10:00:01.957752",
+          "finished_at": "2026-06-01T10:00:03.844383"
+        }
+      ],
+      "stdout": "Hit:1 http://deb.debian.org/debian trixie InRelease\nGet:2 http://security.debian.org/debian-security trixie-security InRelease [43.4 kB]\nHit:3 http://deb.debian.org/debian trixie-updates InRelease\nHit:4 http://download.proxmox.com/debian/pve trixie InRelease\nFetched 43.4 kB in 1s (43.3 kB/s)\nReading package lists...\nReading package lists...\nBuilding dependency tree...\nReading state information...\nCalculating upgrade...\nThe following packages were automatically installed and are no longer required:\n  proxmox-kernel-6.17.13-11-pve-signed proxmox-kernel-7.0.2-3-pve-signed\nUse 'apt autoremove' to remove them.\n0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.\n",
+      "stderr": "Warning: Permanently added '192.168.200.51' (ED25519) to the list of known hosts.\n"
+    },
+    {
+      "name": "eve.horizon.local",
+      "ip": "192.168.200.52",
+      "description": "Eve-NG network simulator",
+      "username": "root",
+      "status": "failed",
+      "reason": "Host unreachable on SSH port 22"
+    },
+    {
+      "name": "ubuntu.horizon.local",
+      "ip": "192.168.50.150",
+      "description": "DMZ VM for public services and docker",
+      "username": "paragr",
+      "status": "passed",
+      "tasks": [
+        {
+          "task": "update_upgrade",
+          "status": "passed",
+          "stdout": "Hit:1 http://au.archive.ubuntu.com/ubuntu noble InRelease\nHit:2 http://au.archive.ubuntu.com/ubuntu noble-updates InRelease\nHit:3 https://download.docker.com/linux/ubuntu noble InRelease\nHit:4 http://au.archive.ubuntu.com/ubuntu noble-backports InRelease\nHit:5 http://security.ubuntu.com/ubuntu noble-security InRelease\nReading package lists...\nReading package lists...\nBuilding dependency tree...\nReading state information...\nCalculating upgrade...\n0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.\n",
+          "stderr": "Warning: Permanently added '192.168.50.150' (ED25519) to the list of known hosts.\n",
+          "started_at": "2026-06-01T10:00:06.949035",
+          "finished_at": "2026-06-01T10:00:09.276232"
+        }
+      ],
+      "stdout": "Hit:1 http://au.archive.ubuntu.com/ubuntu noble InRelease\nHit:2 http://au.archive.ubuntu.com/ubuntu noble-updates InRelease\nHit:3 https://download.docker.com/linux/ubuntu noble InRelease\nHit:4 http://au.archive.ubuntu.com/ubuntu noble-backports InRelease\nHit:5 http://security.ubuntu.com/ubuntu noble-security InRelease\nReading package lists...\nReading package lists...\nBuilding dependency tree...\nReading state information...\nCalculating upgrade...\n0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.\n",
+      "stderr": "Warning: Permanently added '192.168.50.150' (ED25519) to the list of known hosts.\n"
+    },
+    {
+      "name": "pi.hole",
+      "ip": "192.168.0.233",
+      "description": "Raspberry pi DNS filter",
+      "username": "paragr",
+      "status": "passed",
+      "tasks": [
+        {
+          "task": "update_upgrade",
+          "status": "passed",
+          "stdout": "Hit:1 http://deb.debian.org/debian trixie InRelease\nHit:2 http://deb.debian.org/debian trixie-updates InRelease\nGet:3 http://deb.debian.org/debian-security trixie-security InRelease [43.4 kB]\nHit:4 http://archive.raspberrypi.com/debian trixie InRelease\nFetched 43.4 kB in 1s (59.1 kB/s)\nReading package lists...\nReading package lists...\nBuilding dependency tree...\nReading state information...\nCalculating upgrade...\nThe following packages were automatically installed and are no longer required:\n  libyuv0 linux-headers-6.12.47+rpt-common-rpi\n  linux-headers-6.12.47+rpt-rpi-2712 linux-headers-6.12.47+rpt-rpi-v8\n  linux-headers-6.12.62+rpt-common-rpi linux-headers-6.12.62+rpt-rpi-2712\n  linux-headers-6.12.62+rpt-rpi-v8 linux-image-6.12.47+rpt-rpi-2712\n  linux-image-6.12.47+rpt-rpi-v8 linux-image-6.12.62+rpt-rpi-2712\n  linux-image-6.12.62+rpt-rpi-v8 linux-kbuild-6.12.47+rpt\n  linux-kbuild-6.12.62+rpt retry\nUse 'sudo apt autoremove' to remove them.\nThe following packages have been kept back:\n  libcamera-ipa librpicam-app1 rpicam-apps-core\n0 upgraded, 0 newly installed, 0 to remove and 3 not upgraded.\n",
+          "stderr": "Warning: Permanently added '192.168.0.233' (ED25519) to the list of known hosts.\n",
+          "started_at": "2026-06-01T10:00:09.278148",
+          "finished_at": "2026-06-01T10:00:46.617294"
+        }
+      ],
+      "stdout": "Hit:1 http://deb.debian.org/debian trixie InRelease\nHit:2 http://deb.debian.org/debian trixie-updates InRelease\nGet:3 http://deb.debian.org/debian-security trixie-security InRelease [43.4 kB]\nHit:4 http://archive.raspberrypi.com/debian trixie InRelease\nFetched 43.4 kB in 1s (59.1 kB/s)\nReading package lists...\nReading package lists...\nBuilding dependency tree...\nReading state information...\nCalculating upgrade...\nThe following packages were automatically installed and are no longer required:\n  libyuv0 linux-headers-6.12.47+rpt-common-rpi\n  linux-headers-6.12.47+rpt-rpi-2712 linux-headers-6.12.47+rpt-rpi-v8\n  linux-headers-6.12.62+rpt-common-rpi linux-headers-6.12.62+rpt-rpi-2712\n  linux-headers-6.12.62+rpt-rpi-v8 linux-image-6.12.47+rpt-rpi-2712\n  linux-image-6.12.47+rpt-rpi-v8 linux-image-6.12.62+rpt-rpi-2712\n  linux-image-6.12.62+rpt-rpi-v8 linux-kbuild-6.12.47+rpt\n  linux-kbuild-6.12.62+rpt retry\nUse 'sudo apt autoremove' to remove them.\nThe following packages have been kept back:\n  libcamera-ipa librpicam-app1 rpicam-apps-core\n0 upgraded, 0 newly installed, 0 to remove and 3 not upgraded.\n",
+      "stderr": "Warning: Permanently added '192.168.0.233' (ED25519) to the list of known hosts.\n"
+    },
+    {
+      "name": "automation-hub.horizon.local",
+      "ip": "192.168.200.53",
+      "description": "Central hub for automations",
+      "username": "paragr",
+      "status": "passed",
+      "tasks": [
+        {
+          "task": "update_upgrade",
+          "status": "passed",
+          "stdout": "Hit:1 http://security.ubuntu.com/ubuntu resolute-security InRelease\nHit:2 http://au.archive.ubuntu.com/ubuntu resolute InRelease\nHit:3 http://au.archive.ubuntu.com/ubuntu resolute-updates InRelease\nHit:4 http://au.archive.ubuntu.com/ubuntu resolute-backports InRelease\nReading package lists...\nReading package lists...\nBuilding dependency tree...\nReading state information...\nCalculating upgrade...\n0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.\n",
+          "stderr": "",
+          "started_at": "2026-06-01T10:00:46.617321",
+          "finished_at": "2026-06-01T10:00:48.373290"
+        }
+      ],
+      "stdout": "Hit:1 http://security.ubuntu.com/ubuntu resolute-security InRelease\nHit:2 http://au.archive.ubuntu.com/ubuntu resolute InRelease\nHit:3 http://au.archive.ubuntu.com/ubuntu resolute-updates InRelease\nHit:4 http://au.archive.ubuntu.com/ubuntu resolute-backports InRelease\nReading package lists...\nReading package lists...\nBuilding dependency tree...\nReading state information...\nCalculating upgrade...\n0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.\n",
+      "stderr": ""
+    }
+  ]
+}

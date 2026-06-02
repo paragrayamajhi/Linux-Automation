@@ -1,0 +1,57 @@
+{
+  "summary": {
+    "total_hosts": 1,
+    "passed": 1,
+    "failed": 0,
+    "started_at": "2026-06-01T09:04:47.279331",
+    "finished_at": "2026-06-01T09:04:54.250034"
+  },
+  "hosts": [
+    {
+      "name": "ubuntu.horizon.local",
+      "ip": "192.168.50.150",
+      "description": "DMZ VM for public services and docker",
+      "username": "paragr",
+      "status": "passed",
+      "tasks": [
+        {
+          "task": "update_upgrade",
+          "status": "passed",
+          "stdout": "Hit:1 http://au.archive.ubuntu.com/ubuntu noble InRelease\nHit:2 http://au.archive.ubuntu.com/ubuntu noble-updates InRelease\nHit:3 http://au.archive.ubuntu.com/ubuntu noble-backports InRelease\nHit:4 https://download.docker.com/linux/ubuntu noble InRelease\nHit:5 http://security.ubuntu.com/ubuntu noble-security InRelease\nReading package lists...\nReading package lists...\nBuilding dependency tree...\nReading state information...\nCalculating upgrade...\n0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.\n",
+          "stderr": "Warning: Permanently added '192.168.50.150' (ED25519) to the list of known hosts.\n",
+          "started_at": "2026-06-01T09:04:47.280081",
+          "finished_at": "2026-06-01T09:04:49.123875"
+        },
+        {
+          "task": "docker_healthcheck",
+          "status": "passed",
+          "stdout": "jellyfin\tUp About an hour\nnpm\tUp 3 hours (healthy)\nqbittorrent\tUp 3 hours\n",
+          "stderr": "Warning: Permanently added '192.168.50.150' (ED25519) to the list of known hosts.\n",
+          "details": "Docker containers look healthy.",
+          "started_at": "2026-06-01T09:04:49.123911",
+          "finished_at": "2026-06-01T09:04:49.315597"
+        },
+        {
+          "task": "system_healthcheck",
+          "status": "passed",
+          "stdout": "=== System Health Check Report ===\nCPU Usage: 4.8%\nMemory: 0.90 / 3.73 GB\nDNS Response Time: 60.0 ms\nPacket Loss: 0%\nNetwork Latency (avg): 6.488 ms",
+          "stderr": "",
+          "checks": {
+            "cpu_usage": "4.8%",
+            "memory_usage": "0.90 / 3.73 GB",
+            "dns_response_time": "60.0 ms",
+            "dns_test": "passed",
+            "ping_test": "passed",
+            "packet_loss": "0%",
+            "latency": "6.488 ms"
+          },
+          "details": "System health check completed",
+          "started_at": "2026-06-01T09:04:49.315624",
+          "finished_at": "2026-06-01T09:04:54.249930"
+        }
+      ],
+      "stdout": "Hit:1 http://au.archive.ubuntu.com/ubuntu noble InRelease\nHit:2 http://au.archive.ubuntu.com/ubuntu noble-updates InRelease\nHit:3 http://au.archive.ubuntu.com/ubuntu noble-backports InRelease\nHit:4 https://download.docker.com/linux/ubuntu noble InRelease\nHit:5 http://security.ubuntu.com/ubuntu noble-security InRelease\nReading package lists...\nReading package lists...\nBuilding dependency tree...\nReading state information...\nCalculating upgrade...\n0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.\n\njellyfin\tUp About an hour\nnpm\tUp 3 hours (healthy)\nqbittorrent\tUp 3 hours\n\n=== System Health Check Report ===\nCPU Usage: 4.8%\nMemory: 0.90 / 3.73 GB\nDNS Response Time: 60.0 ms\nPacket Loss: 0%\nNetwork Latency (avg): 6.488 ms",
+      "stderr": "Warning: Permanently added '192.168.50.150' (ED25519) to the list of known hosts.\n\nWarning: Permanently added '192.168.50.150' (ED25519) to the list of known hosts.\n\n"
+    }
+  ]
+}
