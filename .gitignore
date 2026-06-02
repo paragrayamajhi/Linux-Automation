@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+reports_archive/
+task_report.json
+task_report.log
+automation_logs/
