@@ -4,3 +4,5 @@ reports_archive/
 task_report.json
 task_report.log
 automation_logs/
+project_archive1/
+.vscode/

@@ -6,36 +6,19 @@ from __future__ import annotations
 import argparse
 import json
 import socket
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-from task_playbook import TASK_PLAYBOOK
-
-SSH_CONNECT_TIMEOUT = 10
-SSH_BATCH_OPTIONS = [
-    "-o",
-    "BatchMode=yes",
-    "-o",
-    "ConnectTimeout=10",
-    "-o",
-    "StrictHostKeyChecking=accept-new",
-    "-o",
-    "UserKnownHostsFile=/dev/null",
-]
+from execution import collect_local_addresses, is_host_local, is_reachable, run_playbook_task
+from inventory import load_hosts
+from models import HostIdentity, HostRunResult
+from reporting import archive_report, build_report
+from selection import build_host_selection, build_task_list, format_available_hosts, format_available_tasks
 
 DEFAULT_HOSTS_PATH = Path(__file__).with_name("hosts.json")
 DEFAULT_REPORT_PATH = Path(__file__).with_name("task_report.json")
-
-TASK_ALIASES = {
-    "system_update": "regular_maint",
-    "update_upgrade": "regular_maint",
-    "system_health": "system_healthcheck",
-    "healthcheck": "system_healthcheck",
-    "docker_health": "docker_healthcheck",
-}
 
 
 def parse_args() -> argparse.Namespace:
@@ -69,176 +52,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_hosts(path: str) -> list[dict[str, Any]]:
-    with open(path, "r", encoding="utf-8") as handle:
-        data = json.load(handle)
-
-    if not isinstance(data, dict) or "hosts" not in data or not isinstance(data["hosts"], list):
-        raise ValueError("hosts.json must contain an object with a 'hosts' list")
-
-    return data["hosts"]
-
-
-def collect_local_addresses() -> set[str]:
-    addresses: set[str] = {"127.0.0.1", "::1"}
-
-    try:
-        hostname = socket.gethostname()
-        for family, _, _, _, sockaddr in socket.getaddrinfo(hostname, None):
-            if family == socket.AF_INET:
-                addresses.add(sockaddr[0])
-            elif family == socket.AF_INET6:
-                addresses.add(sockaddr[0].split("%")[0])
-    except OSError:
-        pass
-
-    try:
-        fqdn = socket.getfqdn()
-        for family, _, _, _, sockaddr in socket.getaddrinfo(fqdn, None):
-            if family == socket.AF_INET:
-                addresses.add(sockaddr[0])
-            elif family == socket.AF_INET6:
-                addresses.add(sockaddr[0].split("%")[0])
-    except OSError:
-        pass
-
-    return addresses
-
-
-def is_host_local(host: str, local_addresses: set[str], hostname: str | None = None) -> bool:
-    if host in local_addresses:
-        return True
-
-    try:
-        host_addrs = {addr[4][0] for addr in socket.getaddrinfo(host, None)}
-    except OSError:
-        host_addrs = set()
-
-    if host_addrs.intersection(local_addresses):
-        return True
-
-    if hostname:
-        host_lower = host.lower()
-        hostname_lower = hostname.lower()
-
-        if host_lower == hostname_lower:
-            return True
-        if host_lower.startswith(hostname_lower + "."):
-            return True
-        if hostname_lower.startswith(host_lower + "."):
-            return True
-
-    return False
-
-
-def is_reachable(host: str, port: int = 22, timeout: int = SSH_CONNECT_TIMEOUT) -> bool:
-    try:
-        with socket.create_connection((host, port), timeout=timeout):
-            return True
-    except OSError:
-        return False
-
-
-def run_shell_command(command: str, timeout: int) -> tuple[int, str, str]:
-    result = subprocess.run(
-        ["/bin/sh", "-c", command],
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
-    return result.returncode, result.stdout, result.stderr
-
-
-def run_remote_command(host: dict[str, Any], command: str, timeout: int) -> tuple[int, str, str]:
-    username = host.get("username", "automator")
-    target = f"{username}@{host['ip']}"
-    ssh_command = ["ssh", *SSH_BATCH_OPTIONS, target, command]
-    result = subprocess.run(
-        ssh_command,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
-    return result.returncode, result.stdout, result.stderr
-
-
-def run_playbook_task(host: dict[str, Any], task_name: str, local: bool, timeout: int) -> dict[str, Any]:
-    task_fn = TASK_PLAYBOOK.get(task_name)
-    if task_fn is None:
-        return {
-            "task": task_name,
-            "status": "failed",
-            "reason": "Unknown task",
-            "started_at": datetime.now().isoformat(),
-            "finished_at": datetime.now().isoformat(),
-        }
-
-    executor: Callable[[str, int], tuple[int, str, str]]
-    if local:
-        executor = lambda command, timeout=timeout: run_shell_command(command, timeout)
-    else:
-        executor = lambda command, timeout=timeout: run_remote_command(host, command, timeout)
-
-    started_at = datetime.now()
-    try:
-        result = task_fn(host, executor, timeout)
-        finished_at = datetime.now()
-        result["started_at"] = started_at.isoformat()
-        result["finished_at"] = finished_at.isoformat()
-        return result
-    except subprocess.TimeoutExpired:
-        finished_at = datetime.now()
-        return {
-            "task": task_name,
-            "status": "failed",
-            "reason": "Task timed out",
-            "started_at": started_at.isoformat(),
-            "finished_at": finished_at.isoformat(),
-        }
-
-
-def normalize_task_name(task: str) -> str:
-    normalized = task.strip().lower()
-    return TASK_ALIASES.get(normalized, normalized)
-
-
-def build_task_list(tasks_arg: str) -> list[str]:
-    normalized_arg = tasks_arg.strip().lower()
-    if normalized_arg == "all":
-        return list(TASK_PLAYBOOK.keys())
-
-    task_names = [normalize_task_name(task) for task in tasks_arg.split(",") if task.strip()]
-    if not task_names:
-        raise ValueError("At least one task must be provided")
-
-    unknown = [task for task in task_names if task not in TASK_PLAYBOOK]
-    if unknown:
-        raise ValueError(f"Unknown task(s): {', '.join(unknown)}")
-
-    return task_names
-
-
-def format_host_selector(host: dict[str, Any]) -> str:
-    name = str(host.get("name", "")).lower()
-    if not name:
-        return "<unknown>"
-
-    short_name = name.split(".")[0]
-    if short_name == "automation-hub":
-        return "automation"
-    return short_name
-
-
-def format_available_hosts(hosts: list[dict[str, Any]]) -> str:
-    return ", ".join(format_host_selector(host) for host in hosts)
-
-
-def format_available_tasks() -> str:
-    canonical = list(TASK_PLAYBOOK.keys())
-    alias_entries = [f"{alias} ({target})" for alias, target in TASK_ALIASES.items()]
-    return ", ".join(canonical + alias_entries)
-
-
 def prompt_for_missing_values(hosts: list[dict[str, Any]], current_hosts: str | None, current_tasks: str | None) -> tuple[str, str]:
     print("Interactive orchestrator input")
     print("Available hosts:", format_available_hosts(hosts))
@@ -256,71 +69,6 @@ def prompt_for_missing_values(hosts: list[dict[str, Any]], current_hosts: str | 
     if current_tasks is None:
         current_tasks = input("Tasks [all]: ").strip() or "all"
     return current_hosts, current_tasks
-
-
-def host_matches_selector(host: dict[str, Any], selector: str) -> bool:
-    selector_lower = selector.lower()
-    name = str(host.get("name", "")).lower()
-    ip = str(host.get("ip", "")).lower()
-    short_name = name.split(".")[0] if name else ""
-    if selector_lower in {name, ip, short_name}:
-        return True
-    if short_name.startswith(selector_lower + "-"):
-        return True
-    return False
-
-
-def build_host_selection(hosts_arg: str, hosts: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    if hosts_arg.strip().lower() == "all":
-        return hosts
-
-    selectors = [item.strip() for item in hosts_arg.split(",") if item.strip()]
-    selected: list[dict[str, Any]] = []
-    for selector in selectors:
-        matches = [host for host in hosts if host_matches_selector(host, selector)]
-        if not matches:
-            raise ValueError(f"No host matched selector '{selector}'")
-        selected.extend(matches)
-
-    # Deduplicate preserving order
-    unique_hosts: list[dict[str, Any]] = []
-    seen = set()
-    for host in selected:
-        key = (host.get("name"), host.get("ip"))
-        if key not in seen:
-            seen.add(key)
-            unique_hosts.append(host)
-
-    return unique_hosts
-
-
-def build_report(results: list[dict[str, Any]], started_at: datetime, finished_at: datetime) -> dict[str, Any]:
-    passed = sum(1 for item in results if item["status"] == "passed")
-    failed = sum(1 for item in results if item["status"] != "passed")
-    return {
-        "summary": {
-            "total_hosts": len(results),
-            "passed": passed,
-            "failed": failed,
-            "started_at": started_at.isoformat(),
-            "finished_at": finished_at.isoformat(),
-        },
-        "hosts": results,
-    }
-
-
-def archive_report(report_path: str) -> None:
-    report_file = Path(report_path)
-    if report_file.exists():
-        archive_dir = report_file.parent / "reports_archive"
-        archive_dir.mkdir(exist_ok=True)
-
-        from datetime import datetime
-
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        archived_path = archive_dir / f"{report_file.stem}_{timestamp}{report_file.suffix}"
-        report_file.rename(archived_path)
-        print(f"Archived previous report to: {archived_path}")
 
 
 def main() -> int:
@@ -347,64 +95,66 @@ def main() -> int:
 
     local_addresses = collect_local_addresses()
     local_hostname = socket.gethostname()
-    report_items: list[dict[str, Any]] = []
+    report_items: list[HostRunResult] = []
     execution_started_at = datetime.now()
 
     for host in selected_hosts:
-        name = host.get("name")
-        ip = host.get("ip")
-        username = host.get("username", "automator")
-        description = host.get("description", "")
-
-        if not name or not ip:
-            report_items.append({
-                "name": name or "<unknown>",
-                "ip": ip or "<unknown>",
-                "description": description,
-                "username": username,
-                "status": "failed",
-                "reason": "Missing name or ip in hosts.json",
-            })
+        host_identity, host_error = HostIdentity.from_mapping(host)
+        if host_identity is None:
+            reason = host_error or "Invalid host entry in hosts.json"
+            host_result = HostRunResult.failed_from_mapping(host, reason)
+            if reason == "Missing or invalid username in hosts.json":
+                print(f"Processing {host_result.name} ({host_result.ip}) [{host_result.description}] as <unknown>")
+                print("  - invalid host configuration: username must be provided in hosts.json")
+            report_items.append(host_result)
             continue
 
-        print(f"Processing {name} ({ip}) [{description}] as {username}")
+        print(
+            f"Processing {host_identity.name} ({host_identity.ip}) "
+            f"[{host_identity.description}] as {host_identity.username}"
+        )
 
-        local = name.lower().startswith("automation-hub") or is_host_local(ip, local_addresses, local_hostname)
+        local = host_identity.name.lower().startswith("automation-hub") or is_host_local(
+            host_identity.ip, local_addresses, local_hostname
+        )
 
-        if not local and not is_reachable(ip):
-            report_items.append({
-                "name": name,
-                "ip": ip,
-                "description": description,
-                "username": username,
-                "status": "failed",
-                "reason": "Host unreachable on SSH port 22",
-            })
-            print(f"  - unreachable: {ip}:22")
+        if not local and not is_reachable(host_identity.ip):
+            report_items.append(
+                HostRunResult(
+                    name=host_identity.name,
+                    ip=host_identity.ip,
+                    description=host_identity.description,
+                    username=host_identity.username,
+                    status="failed",
+                    reason="Host unreachable on SSH port 22",
+                )
+            )
+            print(f"  - unreachable: {host_identity.ip}:22")
             continue
 
+        host_context = host_identity.to_host_context()
         task_results: list[dict[str, Any]] = []
         for task_name in tasks:
             print(f"  Running {task_name}...")
-            result = run_playbook_task(host, task_name, local, args.timeout)
+            result = run_playbook_task(host_context, task_name, local, args.timeout)
             task_results.append(result)
 
         host_status = "passed" if all(task["status"] == "passed" for task in task_results) else "failed"
-        host_result = {
-            "name": name,
-            "ip": ip,
-            "description": description,
-            "username": username,
-            "status": host_status,
-            "tasks": task_results,
-        }
+        host_result = HostRunResult(
+            name=host_identity.name,
+            ip=host_identity.ip,
+            description=host_identity.description,
+            username=host_identity.username,
+            status=host_status,
+            tasks=task_results,
+        )
 
         if host_status == "failed":
-            host_result["reason"] = "One or more tasks failed"
+            host_result.reason = "One or more tasks failed"
 
         if task_results:
-            host_result["stdout"] = "\n".join(task.get("stdout", "") for task in task_results)
-            host_result["stderr"] = "\n".join(task.get("stderr", "") for task in task_results)
+            host_result.stdout = "\n".join(task.get("stdout", "") for task in task_results)
+            host_result.stderr = "\n".join(task.get("stderr", "") for task in task_results)
 
         for task in task_results:
             task_name = task.get("task", "unknown")
@@ -435,8 +185,9 @@ def main() -> int:
         print(f"  Overall: {host_status}")
         report_items.append(host_result)
 
+    report_payload = [item.to_dict() for item in report_items]
     execution_finished_at = datetime.now()
-    report = build_report(report_items, execution_started_at, execution_finished_at)
+    report = build_report(report_payload, execution_started_at, execution_finished_at)
     archive_report(args.report_file)
     with open(args.report_file, "w", encoding="utf-8") as report_handle:
         json.dump(report, report_handle, indent=2)
@@ -447,7 +198,7 @@ def main() -> int:
     print(f"Report saved to: {args.report_file}")
 
     print("\nHost-wise summary:")
-    for host_record in report_items:
+    for host_record in report_payload:
         host_name = host_record.get("name", "<unknown>")
         print(f"\n{host_name}:")
         host_tasks = host_record.get("tasks", [])
