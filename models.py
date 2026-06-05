@@ -10,6 +10,7 @@ class HostIdentity:
     ip: str
     username: str
     description: str = ""
+    tags: tuple[str, ...] = ()
 
     @classmethod
     def from_mapping(cls, host: Mapping[str, Any]) -> tuple[HostIdentity | None, str | None]:
@@ -17,6 +18,7 @@ class HostIdentity:
         ip = host.get("ip")
         username = host.get("username")
         description = host.get("description", "")
+        tags_raw = host.get("tags", [])
 
         if not isinstance(name, str) or not name.strip() or not isinstance(ip, str) or not ip.strip():
             return None, "Missing name or ip in hosts.json"
@@ -24,12 +26,21 @@ class HostIdentity:
         if not isinstance(username, str) or not username.strip():
             return None, "Missing or invalid username in hosts.json"
 
+        parsed_tags: list[str] = []
+        if isinstance(tags_raw, list):
+            parsed_tags = [
+                tag.strip()
+                for tag in tags_raw
+                if isinstance(tag, str) and tag.strip()
+            ]
+
         return (
             cls(
                 name=name.strip(),
                 ip=ip.strip(),
                 username=username.strip(),
                 description=str(description),
+                tags=tuple(parsed_tags),
             ),
             None,
         )
@@ -40,6 +51,7 @@ class HostIdentity:
             "ip": self.ip,
             "username": self.username,
             "description": self.description,
+            "tags": list(self.tags),
         }
 
 

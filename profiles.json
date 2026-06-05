@@ -1,0 +1,28 @@
+{
+  "profiles": {
+    "prod-maintenance": {
+      "description": "Run regular maintenance on production hosts",
+      "host_query": "tags:production",
+      "tasks": ["regular_maint"],
+      "timeout": 600
+    },
+    "prod-health": {
+      "description": "Run system health checks on production hosts",
+      "host_query": "tags:production",
+      "tasks": ["system_healthcheck"],
+      "timeout": 600
+    },
+    "docker-health": {
+      "description": "Run docker health check on docker hosts",
+      "host_query": "tags:docker",
+      "tasks": ["docker_healthcheck"],
+      "timeout": 600
+    },
+    "full-health": {
+      "description": "Run system and docker health checks; docker checks are skipped on non-docker hosts",
+      "host_query": "tags:production",
+      "tasks": ["system_healthcheck", "docker_healthcheck"],
+      "timeout": 600
+    }
+  }
+}

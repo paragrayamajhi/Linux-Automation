@@ -5,7 +5,12 @@ from pathlib import Path
 from typing import Any
 
 
-def build_report(results: list[dict[str, Any]], started_at: datetime, finished_at: datetime) -> dict[str, Any]:
+def build_report(
+    results: list[dict[str, Any]],
+    started_at: datetime,
+    finished_at: datetime,
+    run_mode: str = "real",
+) -> dict[str, Any]:
     passed = sum(1 for item in results if item["status"] == "passed")
     failed = sum(1 for item in results if item["status"] != "passed")
     return {
@@ -15,6 +20,7 @@ def build_report(results: list[dict[str, Any]], started_at: datetime, finished_a
             "failed": failed,
             "started_at": started_at.isoformat(),
             "finished_at": finished_at.isoformat(),
+            "run_mode": run_mode,
         },
         "hosts": results,
     }
