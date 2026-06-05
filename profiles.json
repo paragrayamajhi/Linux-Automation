@@ -23,6 +23,18 @@
       "host_query": "tags:production",
       "tasks": ["system_healthcheck", "docker_healthcheck"],
       "timeout": 600
+    },
+    "lab-maintenance": {
+      "description": "Run regular maintenance on lab/dev hosts only",
+      "host_query": "tags:lab,tags:dev",
+      "tasks": ["regular_maint"],
+      "timeout": 600
+    },
+    "lab-health": {
+      "description": "Health check on lab/dev hosts",
+      "host_query": "tags:lab,tags:dev",
+      "tasks": ["system_healthcheck"],
+      "timeout": 300
     }
   }
 }
