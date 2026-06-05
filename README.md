@@ -368,10 +368,6 @@ To add new tasks:
 4. Update `TASK_ALIASES` in `selection.py` if needed
 5. Document task in README
 
-## License
-
-[Specify your license here]
-
 ## Support
 
-For issues or questions, contact [support contact info].
+For issues or questions, contact paragrayamajhi@yahoo.com
