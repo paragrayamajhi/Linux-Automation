@@ -1,5 +1,20 @@
 #!/usr/bin/env python3
-"""Orchestrate dynamic task execution on Linux hosts from inventory."""
+"""Main orchestration entrypoint for Linux automation tasks.
+
+Plain-English flow:
+1) Read hosts and optional profiles.
+2) Decide *which* hosts and tasks to run (profile/manual/interactive).
+3) Optionally preview plan (dry-run) or emulate outcomes.
+4) Execute tasks per host and collect structured results.
+5) Build/archive/write JSON report and print summary.
+
+Quick glossary:
+- profile: A saved preset of host selection + tasks.
+- task: A unit of work (for example regular maintenance).
+- dry-run: Show what would run, but do not execute anything.
+- emulation: Fake run mode for testing output without touching hosts.
+- report: JSON output containing summary + per-host task results.
+"""
 
 from __future__ import annotations
 
@@ -31,6 +46,7 @@ DEFAULT_PROFILES_PATH = Path(__file__).with_name("profiles.json")
 
 
 def parse_args() -> argparse.Namespace:
+    """Define CLI surface for profile/manual/emulation execution modes."""
     parser = argparse.ArgumentParser(description="Run dynamic tasks against selected hosts")
     parser.add_argument(
         "--profile",
@@ -92,6 +108,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def prompt_for_missing_values(hosts: list[dict[str, Any]], current_hosts: str | None, current_tasks: str | None) -> tuple[str, str]:
+    """Interactive fallback used when --hosts/--tasks are omitted."""
     print("Interactive orchestrator input")
     print("Available hosts:", format_available_hosts(hosts))
     print("Available tasks:", format_available_tasks())
@@ -111,6 +128,7 @@ def prompt_for_missing_values(hosts: list[dict[str, Any]], current_hosts: str | 
 
 
 def prompt_for_profile(profiles: dict[str, dict[str, Any]]) -> str | None:
+    """Interactive profile picker. Returns profile name or None for custom mode."""
     if not profiles:
         return None
 
@@ -141,6 +159,7 @@ def prompt_for_profile(profiles: dict[str, dict[str, Any]]) -> str | None:
 
 
 def is_task_applicable(host: dict[str, Any], task_name: str) -> tuple[bool, str | None]:
+    """Apply host/task compatibility rules before execution."""
     if task_name == "docker_healthcheck":
         if "docker" not in normalize_host_tags(host):
             return False, "Host not tagged for docker"
@@ -148,6 +167,7 @@ def is_task_applicable(host: dict[str, Any], task_name: str) -> tuple[bool, str 
 
 
 def build_emulated_task_result(task_name: str) -> dict[str, Any]:
+    """Create a synthetic passed task payload for emulation modes."""
     now = datetime.now().isoformat()
     return {
         "task": task_name,
@@ -161,14 +181,17 @@ def build_emulated_task_result(task_name: str) -> dict[str, Any]:
 
 
 def main() -> int:
+    """Orchestrator entrypoint: resolve targets, execute tasks, and emit report."""
     args = parse_args()
 
+    # Step 1: Load inventory first. If this fails, nothing else can proceed.
     try:
         hosts = load_hosts(args.hosts_file)
     except Exception as exc:
         print(f"ERROR: Failed to load hosts file: {exc}", file=sys.stderr)
         return 1
 
+    # Step 2: Load profiles only when needed (profile mode, list mode, or interactive mode).
     profiles: dict[str, dict[str, Any]] = {}
     should_load_profiles = bool(args.profile or args.list_profiles or (args.hosts is None and args.tasks is None))
     if should_load_profiles:
@@ -180,6 +203,7 @@ def main() -> int:
                 return 1
             profiles = {}
 
+    # Step 3: list-only path exits early after printing available profiles.
     if args.list_profiles:
         if not profiles:
             print("No profiles available")
@@ -193,11 +217,13 @@ def main() -> int:
             print(f"    host_query={host_query} tasks={profile_tasks}")
         return 0
 
+    # Step 4: decide timeout and resolve host/task selection strategy.
     effective_timeout = args.timeout if args.timeout is not None else 600
     selected_hosts: list[dict[str, Any]]
     tasks: list[str]
     selected_profile_name: str | None = None
 
+    # Selection strategy A: explicit profile from CLI.
     if args.profile:
         profile = profiles.get(args.profile)
         if profile is None:
@@ -214,6 +240,7 @@ def main() -> int:
 
         if args.timeout is None and isinstance(profile.get("timeout"), int):
             effective_timeout = int(profile["timeout"])
+    # Selection strategy B: explicit hosts/tasks (legacy + fully supported).
     elif args.hosts is not None and args.tasks is not None:
         try:
             selected_hosts = build_host_selection(args.hosts, hosts)
@@ -221,6 +248,7 @@ def main() -> int:
         except ValueError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1
+    # Selection strategy C: interactive prompt when neither A nor B provided.
     else:
         if not sys.stdin.isatty():
             print("ERROR: provide --profile, or --hosts and --tasks, when not running interactively", file=sys.stderr)
@@ -248,6 +276,7 @@ def main() -> int:
                 print(f"ERROR: {exc}", file=sys.stderr)
                 return 1
 
+    # All-passed mode is a stronger version of emulation mode.
     if args.emulate_all_passed:
         args.emulate_success = True
 
@@ -259,6 +288,7 @@ def main() -> int:
     if args.emulate_all_passed:
         print("All-passed emulation enabled: all selected tasks will be marked as passed")
 
+    # Dry-run prints plan only and exits before network/command execution.
     if args.dry_run:
         print("Dry run: no tasks will be executed")
         print(f"Hosts ({len(selected_hosts)}):")
@@ -268,11 +298,13 @@ def main() -> int:
         print(f"Timeout: {effective_timeout} seconds")
         return 0
 
+    # Step 5: gather runtime context used for local-vs-remote decision making.
     local_addresses = collect_local_addresses()
     local_hostname = socket.gethostname()
     report_items: list[HostRunResult] = []
     execution_started_at = datetime.now()
 
+    # Step 6: process hosts one by one.
     for host in selected_hosts:
         host_identity, host_error = HostIdentity.from_mapping(host)
         if host_identity is None:
@@ -293,6 +325,7 @@ def main() -> int:
             host_identity.ip, local_addresses, local_hostname
         )
 
+        # In real mode, skip early if remote host is not reachable on SSH port.
         if not args.emulate_success and not local and not is_reachable(host_identity.ip):
             report_items.append(
                 HostRunResult(
@@ -307,11 +340,14 @@ def main() -> int:
             print(f"  - unreachable: {host_identity.ip}:22")
             continue
 
+        # Convert validated host object back to dict shape used by task functions.
         host_context = host_identity.to_host_context()
         task_results: list[dict[str, Any]] = []
+        # Run every selected task for this host (or skip when not applicable).
         for task_name in tasks:
             applicable, skip_reason = is_task_applicable(host_context, task_name)
             if not applicable and not args.emulate_all_passed:
+            # Skipped means "not relevant for this host", not "execution error".
                 now = datetime.now().isoformat()
                 task_results.append(
                     {
@@ -327,12 +363,15 @@ def main() -> int:
 
             print(f"  Running {task_name}...")
             if args.emulate_success:
+                # In emulation mode, do not run real commands; synthesize success.
                 print(f"  Emulating {task_name} as passed...")
                 result = build_emulated_task_result(task_name)
             else:
+                # Real execution path: run the command(s) through execution helpers.
                 result = run_playbook_task(host_context, task_name, local, effective_timeout)
             task_results.append(result)
 
+        # Host fails if any task fails; skipped tasks do not cause host failure.
         host_status = "failed" if any(task["status"] == "failed" for task in task_results) else "passed"
         host_result = HostRunResult(
             name=host_identity.name,
@@ -347,6 +386,7 @@ def main() -> int:
             host_result.reason = "One or more tasks failed"
 
         if task_results:
+            # Keep merged stdout/stderr so each host has a compact combined view.
             host_result.stdout = "\n".join(task.get("stdout", "") for task in task_results)
             host_result.stderr = "\n".join(task.get("stderr", "") for task in task_results)
 
@@ -354,12 +394,12 @@ def main() -> int:
             task_name = task.get("task", "unknown")
             task_status = task.get("status", "unknown")
             if task_status == "passed":
-                status_icon = "✓"
+                status_label = "[PASS]"
             elif task_status == "skipped":
-                status_icon = "~"
+                status_label = "[SKIP]"
             else:
-                status_icon = "✗"
-            print(f"  - {status_icon} {task_name}: {task_status}")
+                status_label = "[FAIL]"
+            print(f"  - {status_label} {task_name}: {task_status}")
             if task_name == "docker_healthcheck" and task_status == "passed":
                 stdout = task.get("stdout", "").strip()
                 if stdout:
@@ -387,9 +427,11 @@ def main() -> int:
         print(f"  Overall: {host_status}")
         report_items.append(host_result)
 
+    # Step 7: serialize host results and compute report metadata.
     report_payload = [item.to_dict() for item in report_items]
     execution_finished_at = datetime.now()
 
+    # Label run mode for auditing and future debugging.
     run_mode = "real"
     if args.emulate_all_passed:
         run_mode = "emulate_all_passed"
@@ -397,6 +439,8 @@ def main() -> int:
         run_mode = "emulate_success"
 
     report = build_report(report_payload, execution_started_at, execution_finished_at, run_mode=run_mode)
+
+    # Step 8: archive previous report, then write the latest run report.
     archive_report(args.report_file)
     with open(args.report_file, "w", encoding="utf-8") as report_handle:
         json.dump(report, report_handle, indent=2)
@@ -408,6 +452,7 @@ def main() -> int:
     print(f"Report saved to: {args.report_file}")
 
     print("\nHost-wise summary:")
+    # Final quick recap per host to make terminal output easy to scan.
     for host_record in report_payload:
         host_name = host_record.get("name", "<unknown>")
         print(f"\n{host_name}:")
@@ -435,3 +480,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+

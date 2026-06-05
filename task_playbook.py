@@ -1,9 +1,35 @@
+"""Task playbook definitions.
+
+Each task function follows a shared contract:
+- inputs: host mapping, executor callback, timeout,
+- output: dict containing task name, status, stdout/stderr, and optional details.
+
+If you are new to automation, each function here is one "job template".
+The orchestrator picks templates, provides a runner callback, and records
+the result dictionary produced by each template.
+
+Quick glossary:
+- playbook: Collection of available task templates.
+- task function: Code that performs one type of check or maintenance.
+- return code (rc): Command exit status; 0 usually means success.
+- stdout/stderr: Normal output and error output from shell commands.
+"""
+
 from typing import Any, Callable
 
+# Task executor signature used by all tasks.
+# The orchestrator injects local or remote execution behavior behind this callable.
 TaskExecutor = Callable[[str, int], tuple[int, str, str]]
 
 
 def task_regular_maint(host: dict[str, Any], execute: TaskExecutor, timeout: int) -> dict[str, Any]:
+    """Run package maintenance and cleanup commands.
+
+    Steps:
+    1) verify passwordless sudo for non-root users,
+    2) run apt update/upgrade/cleanup,
+    3) prune old journal entries.
+    """
     result: dict[str, Any] = {
         "task": "regular_maint",
         "status": "passed",
@@ -13,6 +39,7 @@ def task_regular_maint(host: dict[str, Any], execute: TaskExecutor, timeout: int
 
     username = host.get("username", "automator")
 
+    # Non-root users must be able to run sudo without interactive password prompts.
     if username != "root":
         check_cmd = "sudo -n true"
         rc_check, _, stderr_check = execute(check_cmd, timeout)
@@ -32,12 +59,13 @@ def task_regular_maint(host: dict[str, Any], execute: TaskExecutor, timeout: int
             "sudo -n journalctl --vacuum-time=14d"
         )
     else:
+        # Root path removes sudo prefixes but performs the same operations.
         command = (
             "export DEBIAN_FRONTEND=noninteractive && "
             "apt-get update && apt-get -y upgrade && apt-get -y autoremove --purge && apt-get -y autoclean && apt-get clean && "
             "journalctl --vacuum-time=14d"
         )
-    
+
     rc, stdout, stderr = execute(command, timeout)
     result["stdout"] = stdout
     result["stderr"] = stderr
@@ -50,6 +78,11 @@ def task_regular_maint(host: dict[str, Any], execute: TaskExecutor, timeout: int
 
 
 def task_docker_healthcheck(host: dict[str, Any], execute: TaskExecutor, timeout: int) -> dict[str, Any]:
+    """Check Docker container health and optionally restart docker service.
+
+    If unhealthy container states are detected (unhealthy/exited/dead/restart),
+    the task attempts a docker service restart.
+    """
     result: dict[str, Any] = {
         "task": "docker_healthcheck",
         "status": "passed",
@@ -57,7 +90,8 @@ def task_docker_healthcheck(host: dict[str, Any], execute: TaskExecutor, timeout
         "stderr": "",
     }
 
-    check_cmd = "command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}\t{{.Status}}'"
+    # Validate docker exists and list container names/statuses.
+    check_cmd = "command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}\\t{{.Status}}'"
     rc, stdout, stderr = execute(check_cmd, timeout)
     result["stdout"] = stdout
     result["stderr"] = stderr
@@ -79,6 +113,7 @@ def task_docker_healthcheck(host: dict[str, Any], execute: TaskExecutor, timeout
         result["details"] = "Docker containers look healthy."
         return result
 
+    # Remediation path: restart docker service and append command output.
     restart_cmd = "sudo -n systemctl restart docker"
     rc2, out2, err2 = execute(restart_cmd, timeout)
     result["stdout"] += out2
@@ -93,6 +128,17 @@ def task_docker_healthcheck(host: dict[str, Any], execute: TaskExecutor, timeout
 
 
 def task_system_healthcheck(host: dict[str, Any], execute: TaskExecutor, timeout: int) -> dict[str, Any]:
+    """Collect lightweight system and network health indicators.
+
+    Metrics captured:
+    - CPU usage,
+    - memory usage,
+    - DNS lookup response time,
+    - packet loss and latency via ping.
+
+    The task intentionally tolerates partial measurement failures by writing
+    "N/A" for unavailable metrics instead of failing the whole task.
+    """
     result: dict[str, Any] = {
         "task": "system_healthcheck",
         "status": "passed",
@@ -124,10 +170,10 @@ def task_system_healthcheck(host: dict[str, Any], execute: TaskExecutor, timeout
     rc_dns, stdout_dns, stderr_dns = execute(dns_cmd, timeout)
     if rc_dns == 0 and stdout_dns.strip():
         dns_time = stdout_dns.strip()
-        # Convert from format like 0m0.XXXs to milliseconds
+        # Convert from format like 0m0.XXXs to milliseconds.
         try:
-            if 'm' in dns_time and 's' in dns_time:
-                parts = dns_time.replace('m', ' ').replace('s', ' ').split()
+            if "m" in dns_time and "s" in dns_time:
+                parts = dns_time.replace("m", " ").replace("s", " ").split()
                 if len(parts) >= 2:
                     ms = (float(parts[0]) * 60 + float(parts[1])) * 1000
                     result["checks"]["dns_response_time"] = f"{ms:.1f} ms"
@@ -143,35 +189,35 @@ def task_system_healthcheck(host: dict[str, Any], execute: TaskExecutor, timeout
     # 4. Internet Ping Test (5 pings to 1.1.1.1)
     ping_cmd = "ping -c 5 -W 2 1.1.1.1 2>&1"
     rc_ping, stdout_ping, stderr_ping = execute(ping_cmd, timeout)
-    
+
     ping_loss = "N/A"
     ping_latency = "N/A"
-    
+
     if rc_ping == 0 or "packet loss" in stdout_ping:
-        # Extract packet loss percentage
+        # Parse ping summary lines for packet loss and average latency.
         for line in stdout_ping.splitlines():
             if "% packet loss" in line:
                 try:
-                    loss_pct = line.split('%')[0].split()[-1]
+                    loss_pct = line.split("%")[0].split()[-1]
                     ping_loss = f"{loss_pct}%"
                 except (IndexError, ValueError):
                     ping_loss = "N/A"
             elif "min/avg/max" in line:
                 try:
                     # Format: min/avg/max/mdev = X.XXX/X.XXX/X.XXX/X.XXX ms
-                    avg_latency = line.split('avg=')[1].split('/')[0] if 'avg=' in line else line.split('=')[1].split('/')[1]
+                    avg_latency = line.split("avg=")[1].split("/")[0] if "avg=" in line else line.split("=")[1].split("/")[1]
                     ping_latency = f"{avg_latency} ms"
                 except (IndexError, ValueError):
                     ping_latency = "N/A"
-        
+
         result["checks"]["ping_test"] = "passed"
     else:
         result["checks"]["ping_test"] = "failed"
-    
+
     result["checks"]["packet_loss"] = ping_loss
     result["checks"]["latency"] = ping_latency
 
-    # Build detailed output
+    # Build a readable summary block for stdout.
     output_lines = [
         "=== System Health Check Report ===",
         f"CPU Usage: {result['checks'].get('cpu_usage', 'N/A')}",
@@ -180,13 +226,14 @@ def task_system_healthcheck(host: dict[str, Any], execute: TaskExecutor, timeout
         f"Packet Loss: {result['checks'].get('packet_loss', 'N/A')}",
         f"Network Latency (avg): {result['checks'].get('latency', 'N/A')}",
     ]
-    
+
     result["stdout"] = "\n".join(output_lines)
     result["details"] = "System health check completed"
 
     return result
 
 
+# Public registry used by selection and execution layers.
 TASK_PLAYBOOK: dict[str, Callable[[dict[str, Any], TaskExecutor, int], dict[str, Any]]] = {
     "regular_maint": task_regular_maint,
     "docker_healthcheck": task_docker_healthcheck,

@@ -1,4 +1,23 @@
 {
+  "_meta": {
+    "file_purpose": "Reusable execution presets consumed by selection.load_profiles().",
+    "quick_glossary": {
+      "profile": "Saved preset of hosts + tasks + timeout.",
+      "host_query": "Rule for picking hosts from inventory.",
+      "tasks": "Work items to run on each selected host.",
+      "timeout": "Maximum seconds allowed per task command."
+    },
+    "profile_fields": {
+      "description": "Human-readable summary shown in --list-profiles and interactive menu.",
+      "host_query": "Host selector expression; supports all or tag syntax (e.g. tags:production).",
+      "tasks": "List of canonical/alias task names resolved by selection.build_task_list().",
+      "timeout": "Per-task timeout override in seconds for this profile."
+    },
+    "query_notes": [
+      "Comma-separated tags are OR-matched.",
+      "Example: tags:lab,tags:dev selects hosts with either tag."
+    ]
+  },
   "profiles": {
     "prod-maintenance": {
       "description": "Run regular maintenance on production hosts",

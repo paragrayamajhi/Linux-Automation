@@ -1,40 +1,62 @@
 {
-	"hosts": [
-		{
-			"name": "proxmox.horizon.local",
-			"ip": "192.168.200.51",
-			"description": "Proxmox Hypervisor",
-			"username": "automator",
-			"tags": ["production", "hypervisor"]
-		},
-		{
-			"name": "eve.horizon.local",
-			"ip": "192.168.200.52",
-			"description": "Eve-NG network simulator",
-			"username": "automator",
-			"tags": ["non-production", "lab"]
-		},
-		{
-			"name": "ubuntu.horizon.local",
-			"ip": "192.168.50.150",
-			"description": "DMZ VM for public services and docker",
-			"username": "automator",
-			"tags": ["production", "docker", "dmz"]
-		},
-		{
-			"name": "pi.hole",
-			"ip": "192.168.0.233",
-			"description": "Raspberry pi DNS filter",
-			"username": "automator",
-			"tags": ["production", "dns"]
-		},
-		{
-			"name": "automation-hub.horizon.local",
-			"ip": "192.168.200.53",
-			"description": "Central hub for automations",
-			"username": "automator",
-			"tags": ["production", "automation"]
-		}
-	]
+  "_meta": {
+    "file_purpose": "Inventory of managed Linux hosts used by orchestrator.py.",
+    "quick_glossary": {
+      "host": "A machine where tasks may run.",
+      "tag": "A label used to group/select hosts.",
+      "production": "Business-critical environment.",
+      "non-production": "Lab/dev/test environment."
+    },
+    "structure": {
+      "hosts": "List of host records consumed by inventory.load_hosts()"
+    },
+    "host_fields": {
+      "name": "Human-readable host identifier (also used for selector matching).",
+      "ip": "Primary IP/DNS target used for TCP reachability and SSH.",
+      "description": "Friendly description shown in console/report output.",
+      "username": "SSH user for remote command execution.",
+      "tags": "Host classification labels used by profile host_query rules."
+    },
+    "notes": [
+      "Extra keys are ignored by current loaders and are safe for documentation metadata.",
+      "Production tagging excludes Eve by design in this environment."
+    ]
+  },
+  "hosts": [
+    {
+      "name": "proxmox.horizon.local",
+      "ip": "192.168.200.51",
+      "description": "Proxmox Hypervisor",
+      "username": "automator",
+      "tags": ["production", "hypervisor"]
+    },
+    {
+      "name": "eve.horizon.local",
+      "ip": "192.168.200.52",
+      "description": "Eve-NG network simulator",
+      "username": "automator",
+      "tags": ["non-production", "lab"]
+    },
+    {
+      "name": "ubuntu.horizon.local",
+      "ip": "192.168.50.150",
+      "description": "DMZ VM for public services and docker",
+      "username": "automator",
+      "tags": ["production", "docker", "dmz"]
+    },
+    {
+      "name": "pi.hole",
+      "ip": "192.168.0.233",
+      "description": "Raspberry pi DNS filter",
+      "username": "automator",
+      "tags": ["production", "dns"]
+    },
+    {
+      "name": "automation-hub.horizon.local",
+      "ip": "192.168.200.53",
+      "description": "Central hub for automations",
+      "username": "automator",
+      "tags": ["production", "automation"]
+    }
+  ]
 }
-

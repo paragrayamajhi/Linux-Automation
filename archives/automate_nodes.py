@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """Update remote Linux hosts from hosts.json.
 
+Legacy archived runner retained for reference with task-playbook integration.
+
+Quick glossary:
+- archived runner: Older script kept for historical reference.
+- host inventory: List of machines loaded from hosts.json.
+- task result: Pass/fail payload for each executed task.
+
 This script checks whether each target host is reachable over SSH, then runs
 `apt-get update && apt-get -y upgrade` on each host. Hosts that are not
 reachable are skipped, and a JSON report is written at the end summarizing
@@ -35,6 +42,7 @@ DEFAULT_REPORT_PATH = Path(__file__).with_name("update_report.json")
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments for legacy update runner."""
     parser = argparse.ArgumentParser(description="Update remote Linux hosts from hosts.json")
     parser.add_argument(
         "--hosts-file",
@@ -272,6 +280,7 @@ def archive_report(report_path: str) -> None:
 
 
 def main() -> int:
+    """Legacy entrypoint: iterate hosts, run tasks, and save report."""
     args = parse_args()
     try:
         hosts = load_hosts(args.hosts_file)
@@ -342,7 +351,7 @@ def main() -> int:
         for task in task_results:
             task_name = task.get("task", "unknown")
             task_status = task.get("status", "unknown")
-            status_icon = "✓" if task_status == "passed" else "✗"
+            status_icon = "âœ“" if task_status == "passed" else "âœ—"
             print(f"  - {status_icon} {task_name}: {task_status}")
             
             # Special handling for docker_healthcheck: display container list
@@ -389,3 +398,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
